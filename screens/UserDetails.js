@@ -27,7 +27,7 @@ const UserDetails = ({ navigation }) => {
       firstName: firstName,
       lastName: lastName,
       email: email,
-      imageUri: image,
+      imageUrl: image,
     };
 
     const config = {

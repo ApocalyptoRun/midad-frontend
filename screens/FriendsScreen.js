@@ -4,6 +4,7 @@ import { BASE_URL, createConfig } from "../constants/config";
 import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 import User from "../components/User";
+import FriendRequest from "../components/FriendRequest";
 
 const FriendsScreen = () => {
   const { userToken } = useContext(AuthContext);
@@ -13,31 +14,34 @@ const FriendsScreen = () => {
     const config = createConfig(userToken);
 
     const fecthFriendRequests = async () => {
-        try {
-           const response = await axios.get(`${BASE_URL}/user/friendRequests`, config);
-           if(response.status === 200) {
-                const friendRequestsData = response.data.map((friendRequest) => ({
-                    _id : friendRequest._id,
-                    firstName: friendRequest.firstName,
-                    imageUrl: friendRequest.imageUrl 
-                }))
-
-                setFriendRequests(friendRequestsData);
-           }
-            
-        } catch (error) {
-            console.log(`Error retrieving friend requests ${error}`)
+      try {
+        const response = await axios.get(
+          `${BASE_URL}/user/friendRequests`,
+          config
+        );
+        if (response.status === 200) {
+          setFriendRequests(response.data);
         }
-        
+      } catch (error) {
+        console.log(`Error retrieving friend requests ${error}`);
+      }
     };
 
     fecthFriendRequests();
   }, []);
 
-  console.log(friendRequests)
   return (
-    <SafeAreaView>
-     
+    <SafeAreaView style={{ padding: 10, marginHorizontal: 12 }}>
+      {friendRequests.length > 0 && <Text>Your Friend Requests !</Text>}
+
+      {friendRequests.map((item, index) => (
+        <FriendRequest
+          key={index}
+          item={item}
+          friendRequests={friendRequests}
+          setFriendRequests={setFriendRequests}
+        />
+      ))}
     </SafeAreaView>
   );
 };

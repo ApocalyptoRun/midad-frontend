@@ -12,7 +12,6 @@ export const AuthProvider = ({ children }) => {
   const [userToken, setUserToken] = useState(null);
   const [phoneNumber, setPhoneNumber] = useState("58071373");
   const [callingCode, setCallingCode] = useState("216");
-  const [uid, setUid] = useState("");
 
   const login = async () => {
     setIsLoading(true);
@@ -48,10 +47,9 @@ export const AuthProvider = ({ children }) => {
         setIsLoading(true);
         if (!userToken) {
           let userToken = await AsyncStorage.getItem("userToken");
-          const decodedToken = JWT.decode(userToken, ACCESS_TOKEN_SECRET);
-          setUid(decodedToken.user.id);
           setUserToken(userToken);
         }
+
         setIsLoading(false);
       } catch (error) {
         console.log(`is LoggedIn Error : ${error}`);

@@ -1,4 +1,4 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import React, { useEffect, useContext, useLayoutEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,12 +8,13 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import axios from "axios";
 import { BASE_URL, createConfig } from "../constants/config";
 import User from "../components/User";
-import FriendsScreen from "./FriendsScreen";
+import * as Contacts from "expo-contacts";
 
 const HomeScreen = () => {
-  const { userToken } = useContext(AuthContext);
+  const { userToken, logout } = useContext(AuthContext);
   const navigation = useNavigation();
   const [users, setUsers] = useState([]);
+  const [contacts, setContacts] = useState([]);
 
   useEffect(() => {
     const config = createConfig(userToken);
@@ -29,7 +30,27 @@ const HomeScreen = () => {
         });
     };
 
-    fecthUsers();
+    const fecthContacts = async () => {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if( status === 'granted') {
+        const { data } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.PhoneNumbers]
+        });
+
+        if(data.length > 0 ) {
+          setContacts(data);
+          console.log(data);
+        } else {
+          console.log("No Contacts Found");
+        }
+      } else {
+        console.log("Permission to access contacts denied.")
+      }
+    }
+
+
+    //fecthUsers();
+    fecthContacts()
   }, []);
 
   useLayoutEffect(() => {
@@ -52,9 +73,10 @@ const HomeScreen = () => {
             name="chatbubble-ellipses-outline"
             size={24}
             color="black"
+            onPress={() => navigation.navigate("ChatsScreen")}
           />
           <MaterialIcons
-            onPress={() => navigation.navigate(FriendsScreen)}
+            onPress={() => navigation.navigate("FriendsScreen")}
             name="people-outline"
             size={24}
             color="black"
@@ -71,6 +93,21 @@ const HomeScreen = () => {
           <User key={index} item={item} />
         </View>
       ))}
+
+      {contacts.length > 0 && <Text>Invite to Midad</Text>}
+
+      {contacts.map((contact)=> (
+        <View>
+          <Text>{contact.name}</Text>
+        </View>
+      ))}
+
+      <Pressable
+        style={{marginTop:15}}
+        onPress={logout}
+      >
+        <Text>logout</Text>
+      </Pressable>
     </SafeAreaView>
   );
 };
