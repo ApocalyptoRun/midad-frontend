@@ -13,25 +13,8 @@ import * as Contacts from "expo-contacts";
 const HomeScreen = () => {
   const { userToken, logout } = useContext(AuthContext);
   const navigation = useNavigation();
-  const [users, setUsers] = useState([]);
   const [matchedContacts, setMatchedContacts] = useState([]);
   const [phoneContacts, setPhoneContacts] = useState([]);
-
-  useEffect(() => {
-    const config = createConfig(userToken);
-
-    const fecthUsers = async () => {
-      axios
-        .get(`${BASE_URL}/user/users`, config)
-        .then((response) => {
-          setUsers(response.data);
-        })
-        .catch((error) => {
-          console.log(`Error retrieving users ${error}`);
-        });
-    };
-    fecthUsers();
-  }, []);
 
   useEffect(() => {
     const fecthContacts = async () => {
@@ -59,24 +42,29 @@ const HomeScreen = () => {
   }, []);
 
   useEffect(() => {
-    const compareContacts = () => {
-      const contactsSansPlusAndSpace = phoneContacts.map((contact) => {
-        let modifiedNumber = contact.phoneNumbers[0].number.replace("+", "");
-        modifiedNumber = modifiedNumber.replace(/\s/g, "");
-        return modifiedNumber;
-      });
-
-      const phoneNumbers = contactsSansPlusAndSpace;
-
-      const matchedContacts = users.filter((user) =>
-        phoneNumbers.includes(user.phoneNumber.toString())
-      );
-
-      setMatchedContacts(matchedContacts);
+    const fetchMatchesFromBackend = async () => {
+      const postData = {
+        phoneContacts: phoneContacts.map(
+          (contact) => contact.phoneNumbers[0].number
+        ),
+      };
+      const config = createConfig(userToken);
+      try {
+        const response = await axios.post(
+          `${BASE_URL}/user/compareContacts`,
+          postData,
+          config
+        );
+        if (response.status === 200) {
+          setMatchedContacts(response.data);
+        }
+      } catch (error) {
+        console.error(`Error comparing contacts with backend: ${error}`);
+      }
     };
 
-    compareContacts();
-  }, [phoneContacts, users]);
+    fetchMatchesFromBackend();
+  }, [phoneContacts]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -108,22 +96,21 @@ const HomeScreen = () => {
           />
         </View>
       ),
-      
     });
   }, []);
 
   return (
     <SafeAreaView style={{ paddingHorizontal: 10 }}>
-      {/* {matchedContacts.length > 0 && <Text>Contacts on Midad !</Text>} */}
+      {matchedContacts.length > 0 && <Text>Contacts on Midad !</Text>}
 
-      {users.map((item, index) => (
+      {matchedContacts.map((item, index) => (
         <View>
           <User key={index} item={item} />
         </View>
       ))}
 
       <Pressable
-        style={{ marginTop: 15, alignItems:"center"}}
+        style={{ marginTop: 15, alignItems: "center" }}
         onPress={logout}
       >
         <Text>logout</Text>
