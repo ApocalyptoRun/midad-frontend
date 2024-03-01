@@ -14,7 +14,8 @@ const HomeScreen = () => {
   const { userToken, logout } = useContext(AuthContext);
   const navigation = useNavigation();
   const [users, setUsers] = useState([]);
-  const [contacts, setContacts] = useState([]);
+  const [matchedContacts, setMatchedContacts] = useState([]);
+  const [phoneContacts, setPhoneContacts] = useState([]);
 
   useEffect(() => {
     const config = createConfig(userToken);
@@ -29,29 +30,53 @@ const HomeScreen = () => {
           console.log(`Error retrieving users ${error}`);
         });
     };
+    fecthUsers();
+  }, []);
 
+  useEffect(() => {
     const fecthContacts = async () => {
       const { status } = await Contacts.requestPermissionsAsync();
-      if( status === 'granted') {
+      if (status === "granted") {
         const { data } = await Contacts.getContactsAsync({
-          fields: [Contacts.Fields.PhoneNumbers]
+          fields: [Contacts.Fields.PhoneNumbers],
         });
 
-        if(data.length > 0 ) {
-          setContacts(data);
-          console.log(data);
+        if (data.length > 0) {
+          const contactsWithNumbers = data.filter(
+            (contact) => contact.phoneNumbers && contact.phoneNumbers.length > 0
+          );
+
+          setPhoneContacts(contactsWithNumbers);
         } else {
           console.log("No Contacts Found");
         }
       } else {
-        console.log("Permission to access contacts denied.")
+        console.log("Permission to access contacts denied.");
       }
-    }
+    };
 
-
-    //fecthUsers();
-    fecthContacts()
+    fecthContacts();
   }, []);
+
+  useEffect(() => {
+    const compareContacts = () => {
+      const contactsSansPlusAndSpace = phoneContacts.map((contact) => {
+        let modifiedNumber = contact.phoneNumbers[0].number.replace("+", "");
+        modifiedNumber = modifiedNumber.replace(/\s/g, "");
+        return modifiedNumber;
+      });
+
+      const phoneNumbers = contactsSansPlusAndSpace;
+
+      const matchedContacts = users.filter((user) =>
+        phoneNumbers.includes(user.phoneNumber.toString())
+      );
+
+      setMatchedContacts(matchedContacts);
+    };
+
+    compareContacts();
+  }, [phoneContacts, users]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -83,27 +108,22 @@ const HomeScreen = () => {
           />
         </View>
       ),
+      
     });
   }, []);
 
   return (
-    <SafeAreaView style={{ padding: 10 }}>
+    <SafeAreaView style={{ paddingHorizontal: 10 }}>
+      {/* {matchedContacts.length > 0 && <Text>Contacts on Midad !</Text>} */}
+
       {users.map((item, index) => (
         <View>
           <User key={index} item={item} />
         </View>
       ))}
 
-      {contacts.length > 0 && <Text>Invite to Midad</Text>}
-
-      {contacts.map((contact)=> (
-        <View>
-          <Text>{contact.name}</Text>
-        </View>
-      ))}
-
       <Pressable
-        style={{marginTop:15}}
+        style={{ marginTop: 15, alignItems:"center"}}
         onPress={logout}
       >
         <Text>logout</Text>
