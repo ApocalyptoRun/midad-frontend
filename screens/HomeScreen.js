@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, TouchableOpacity, View } from "react-native";
 import React, { useEffect, useContext, useLayoutEffect, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -86,7 +86,6 @@ const HomeScreen = () => {
             name="chatbubble-ellipses-outline"
             size={24}
             color="black"
-            onPress={() => navigation.navigate("ChatsScreen")}
           />
           <MaterialIcons
             onPress={() => navigation.navigate("FriendsScreen")}
@@ -104,9 +103,7 @@ const HomeScreen = () => {
       {matchedContacts.length > 0 && <Text>Contacts on Midad !</Text>}
 
       {matchedContacts.map((item, index) => (
-        <View>
-          <User key={index} item={item} />
-        </View>
+        <User key={index} item={item} navigation={navigation}/>
       ))}
 
       <Pressable

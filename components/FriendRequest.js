@@ -4,7 +4,6 @@ import { AuthContext } from "../context/AuthContext";
 import { BASE_URL, createConfig } from "../constants/config";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
-import ChatsScreen from "../screens/ChatsScreen";
 
 const FriendRequest = ({ item, friendRequests, setFriendRequests }) => {
   const { userToken } = useContext(AuthContext);
@@ -29,7 +28,6 @@ const FriendRequest = ({ item, friendRequests, setFriendRequests }) => {
           friendRequests.filter((request) => request._id !== friendRequestId)
         );
 
-        navigation.navigate('ChatsScreen');
       }
     } catch (error) {
       console.log(`Error accepting request ${error}`);

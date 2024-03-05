@@ -5,7 +5,7 @@ import { AuthContext } from "../context/AuthContext";
 import { TabsNav } from "./TabsNav";
 import HomeScreen from "../screens/HomeScreen";
 import FriendsScreen from "../screens/FriendsScreen";
-import ChatsScreen from "../screens/ChatsScreen";
+import ChatScreen from "../screens/ChatScreen";
 
 const Stack = createStackNavigator();
 
@@ -19,9 +19,9 @@ export const AppStack = () => {
          )}
 
       {/* <Stack.Screen name='TabsNav'  component={TabsNav} options={{headerShown: false}}/> */}
-      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="HomeScreen" component={HomeScreen} />
+      <Stack.Screen name="ChatScreen" component={ChatScreen}/>
       <Stack.Screen name="FriendsScreen" component={FriendsScreen}/>
-      <Stack.Screen name="ChatsScreen" component={ChatsScreen}/>
     </Stack.Navigator>
   );
 };

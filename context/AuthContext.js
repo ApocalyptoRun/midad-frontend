@@ -1,6 +1,10 @@
 import React, { createContext, useEffect, useState } from "react";
 import axios from "axios";
-import { ACCESS_TOKEN_SECRET, BASE_URL } from "../constants/config";
+import {
+  ACCESS_TOKEN_SECRET,
+  BASE_URL,
+  createConfig,
+} from "../constants/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import JWT from "expo-jwt";
 
@@ -10,6 +14,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFirstAuth, setIsFirstAuth] = useState(true);
   const [userToken, setUserToken] = useState(null);
+  const [userId, setUserId] = useState(null);
   const [phoneNumber, setPhoneNumber] = useState("58071373");
   const [callingCode, setCallingCode] = useState("216");
 
@@ -59,6 +64,28 @@ export const AuthProvider = ({ children }) => {
     isLoggedIn();
   }, []);
 
+  useEffect(() => {
+    const authenticateToken = async () => {
+      if (userToken) {
+        const config = createConfig(userToken);
+
+        try {
+          const response = await axios.get(
+            `${BASE_URL}/auth/authenticateToken`,
+            config
+          );
+          if (response) {
+            setUserId(response.data.id);
+          }
+        } catch (error) {
+          console.log(`Error authenticating token ${error}`);
+        }
+      }
+    };
+
+    authenticateToken();
+  }, [userToken]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -73,6 +100,7 @@ export const AuthProvider = ({ children }) => {
         setIsFirstAuth,
         login,
         logout,
+        userId
       }}
     >
       {children}
