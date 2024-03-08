@@ -9,6 +9,7 @@ const settings = require('../assets/settings.png');
 const profile = require('../assets/profile.png');
 
 
+
 export default {
     secureLogin,
     flagTunisie,

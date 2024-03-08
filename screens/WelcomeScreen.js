@@ -8,7 +8,7 @@ const { height } = Dimensions.get('window');
 
 const WelcomeScreen = ({navigation}) => {
   return (
-    <SafeAreaView style={styles.welcomeScreen}>
+    <SafeAreaView style={{flex:1, backgroundColor:"white"}}>
         <View style={{
             paddingTop: 40
         }}>

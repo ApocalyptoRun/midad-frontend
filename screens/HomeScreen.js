@@ -103,7 +103,7 @@ const HomeScreen = () => {
       {matchedContacts.length > 0 && <Text>Contacts on Midad !</Text>}
 
       {matchedContacts.map((item, index) => (
-        <User key={index} item={item} navigation={navigation}/>
+        <User key={index} item={item} navigation={navigation} />
       ))}
 
       <Pressable

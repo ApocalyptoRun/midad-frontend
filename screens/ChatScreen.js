@@ -1,51 +1,67 @@
 import {
   Button,
+  Image,
   KeyboardAvoidingView,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { BASE_URL, createConfig } from "../constants/config";
 import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 import { io } from "socket.io-client";
 import { set } from "react-hook-form";
 import { SIZES } from "../constants/themes";
+import { Entypo } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
+import { COLORS } from "../constants/themes";
+import EmojiSelector from "react-native-emoji-selector";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
+import images from "../constants/images";
 
-const ChatScreen = ({ route }) => {
-  const { currentChatId } = route.params;
+const ChatScreen = () => {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const { currentChat } = route.params;
+  const currentChatId = currentChat._id;
   const { userToken, userId } = useContext(AuthContext);
   const [messages, setMessages] = useState([]);
+  const [selectedImage, setSelectedImage] = useState("");
   const [msg, setMsg] = useState("");
   const [arrivalMessage, setArrivalMessage] = useState("");
   const socket = useRef("");
-  const scrollRef = useRef();
+  const [showEmojiSelector, setShowEmojiSelector] = useState(false);
 
   useEffect(() => {
     if (currentChatId) {
-      const fecthMessages = async () => {
-        const postData = {
-          to: currentChatId,
-        };
-        const config = createConfig(userToken);
+      try {
+        config = createConfig(userToken);
 
-        try {
+        const fecthMessages = async () => {
           const response = await axios.post(
             `${BASE_URL}/message/messages`,
-            postData,
+            { recepientId: currentChatId },
             config
           );
+          if (response) setMessages(response.data);
+        };
 
-          setMessages(response.data);
-        } catch (err) {
-          console.log(`Error fecthing messages ${err}`);
-        }
-      };
-
-      fecthMessages();
+        fecthMessages();
+      } catch (error) {
+        console.log(`Error fecthing message ${error}`);
+      }
     }
   }, [currentChatId]);
 
@@ -56,35 +72,10 @@ const ChatScreen = ({ route }) => {
     }
   }, [userId]);
 
-  const handleSendMessage = async () => {
-    const postData = {
-      to: currentChatId,
-      message: msg,
-    };
-    const config = createConfig(userToken);
-
-    axios
-      .post(`${BASE_URL}/message/addMessage`, postData, config)
-      .then((response) => {
-        console.log(response.data);
-      })
-      .catch((err) => {
-        console.log(`Error adding message ${err}`);
-      });
-
-    socket.current.emit("send-msg", { ...postData, from: userId });
-
-    const msgs = [...messages];
-    msgs.push({ fromSelf: true, message: msg });
-    setMessages(msgs);
-
-    setMsg("");
-  };
-
   useEffect(() => {
     if (socket.current) {
-      socket.current.on("msg-receive", (msg) => {
-        setArrivalMessage({ fromSelf: false, message: msg });
+      socket.current.on("msg-receive", (data) => {
+        setArrivalMessage(data);
       });
     }
   }, []);
@@ -93,55 +84,313 @@ const ChatScreen = ({ route }) => {
     arrivalMessage && setMessages((prev) => [...prev, arrivalMessage]);
   }, [arrivalMessage]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behaviour: "smooth" });
-  }, [messages]);
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: "",
+      headerLeft: () => (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Ionicons
+            onPress={() => navigation.goBack()}
+            style={{ marginLeft: 5 }}
+            name="arrow-back"
+            size={24}
+            color="black"
+          />
+
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Image
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 50,
+                resizeMode: "cover",
+              }}
+              source={{ uri: currentChat?.imageUrl }}
+            />
+            <Text style={{ marginLeft: 5, fontSize: 15, fontWeight: "bold" }}>
+              {currentChat?.firstName}
+            </Text>
+          </View>
+        </View>
+      ),
+    });
+  }, []);
+
+  const handleSend = async (messageType, imageUri) => {
+    try {
+      const formData = new FormData();
+      formData.append("recepientId", currentChatId);
+
+      if (messageType === "image") {
+        formData.append("messageType", "image");
+        formData.append("imageFile", {
+          uri: imageUri,
+          name: "image.jpg",
+          type: "image/jpeg",
+        });
+      } else {
+        formData.append("messageType", "text");
+        formData.append("messageText", msg);
+      }
+
+      console.log(formData);
+
+      const response = await fetch(`${BASE_URL}/message/addMessage`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+        },
+      });
+
+      if (response) {
+        const responseData = await response.json();
+        console.log(responseData);
+
+        socket.current.emit("send-msg", responseData);
+
+        const msgs = [...messages];
+        msgs.push(responseData);
+        setMessages(msgs);
+
+        setMsg("");
+        setSelectedImage("");
+      }
+
+      /*       axios
+        .post(`${BASE_URL}/message/addMessage`, postData, config)
+        .then((response) => {
+          console.log(response.data);
+
+          socket.current.emit("send-msg", response.data);
+
+          const msgs = [...messages];
+          msgs.push(response.data);
+          setMessages(msgs);
+
+          setMsg("");
+        })
+        .catch((err) => {
+          console.log(`Error adding message ${err}`);
+        }); */
+    } catch (error) {
+      console.log(`Error in sending the message ${error}`);
+    }
+  };
+
+  const handleEmojiPress = () => {
+    setShowEmojiSelector(!showEmojiSelector);
+  };
+
+  const formatTime = (time) => {
+    const options = { hour: "numeric", minute: "numeric" };
+    return new Date(time).toLocaleString("en-US", options);
+  };
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    console.log(result);
+
+    if (!result.canceled) {
+      handleSend("image", result.assets[0].uri);
+    }
+  };
 
   return (
-    <ScrollView style={{ padding: 10 }}>
-      {messages.map((msg, index) => (
-        <View
-          key={index}
-          style={msg.fromSelf ? styles.sended : styles.received}
-        >
-          <Text style={msg.fromSelf ? styles.textSended : styles.textReceived}>
-            {msg.message}
-          </Text>
-        </View>
-      ))}
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "white" }}>
+      <ScrollView>
+        {messages.map((item, index) => {
+          if (item?.messageType === "text") {
+            return (
+              <Pressable
+                key={index}
+                style={[
+                  item?.senderId?._id === userId
+                    ? {
+                        alignSelf: "flex-end",
+                        backgroundColor: COLORS.cornflowerBlue,
+                        padding: 8,
+                        margin: 10,
+                        maxWidth: "60%",
+                        borderRadius: 7,
+                      }
+                    : {
+                        alignSelf: "flex-start",
+                        backgroundColor: COLORS.gray4,
+                        padding: 8,
+                        margin: 10,
+                        maxWidth: "60%",
+                        borderRadius: 7,
+                      },
+                ]}
+              >
+                <Text
+                  style={[
+                    item?.senderId?._id === userId
+                      ? {
+                          fontSize: 13,
+                          color: "white",
+                          textAlign: "left",
+                        }
+                      : {
+                          fontSize: 13,
+                          textAlign: "left",
+                        },
+                  ]}
+                >
+                  {item?.message}
+                </Text>
+                <Text
+                  style={[
+                    item?.senderId?._id === userId
+                      ? {
+                          textAlign: "right",
+                          fontSize: 9,
+                          color: COLORS.gray6,
+                          marginTop: 5,
+                        }
+                      : {
+                          textAlign: "left",
+                          fontSize: 9,
+                          marginTop: 5,
+                        },
+                  ]}
+                >
+                  {formatTime(item.timeStamp)}
+                </Text>
+              </Pressable>
+            );
+          }
 
-      <View>
-        <TextInput
-          style={{ marginVertical: 10, backgroundColor: "white" }}
-          placeholder="send a message"
-          value={msg}
-          onChangeText={(text) => setMsg(text)}
+          if (item?.messageType === "image") {
+            return (
+              <Pressable
+                key={index}
+                style={[
+                  item?.senderId?._id === userId
+                    ? {
+                        alignSelf: "flex-end",
+                        backgroundColor: COLORS.cornflowerBlue,
+                        padding: 8,
+                        margin: 10,
+                        maxWidth: "60%",
+                        borderRadius: 7,
+                      }
+                    : {
+                        alignSelf: "flex-start",
+                        backgroundColor: COLORS.gray4,
+                        padding: 8,
+                        margin: 10,
+                        maxWidth: "60%",
+                        borderRadius: 7,
+                      },
+                ]}
+              >
+                <View>
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={{ width: 200, height: 200, borderRadius: 7 }}
+                  />
+                  <Text
+                    style={[
+                      item?.senderId?._id === userId
+                        ? {
+                            textAlign: "right",
+                            fontSize: 9,
+                            color: COLORS.gray6,
+                            marginTop: 5,
+                          }
+                        : {
+                            textAlign: "left",
+                            fontSize: 9,
+                            marginTop: 5,
+                          },
+                    ]}
+                  >
+                    {formatTime(item.timeStamp)}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          }
+        })}
+      </ScrollView>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 10,
+          paddingVertical: 10,
+          borderTopWidth: 1,
+          borderTopColor: "#dddddd",
+          marginBottom: showEmojiSelector ? 0 : 25,
+        }}
+      >
+        <Entypo
+          onPress={handleEmojiPress}
+          style={{ marginRight: 5 }}
+          name="emoji-happy"
+          size={24}
+          color="gray"
         />
 
-        <Button title="send" onPress={handleSendMessage} />
+        <TextInput
+          value={msg}
+          onChangeText={(text) => setMsg(text)}
+          style={{
+            flex: 1,
+            height: 40,
+            borderWidth: 1,
+            borderColor: "#dddddd",
+            borderRadius: 20,
+            paddingHorizontal: 10,
+          }}
+          placeholder="Midad message"
+        />
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 7,
+            marginHorizontal: 8,
+          }}
+        >
+          <Entypo onPress={pickImage} name="camera" size={24} color="gray" />
+
+          <Feather name="mic" size={24} color="gray" />
+        </View>
+
+        <Pressable
+          onPress={() => handleSend("text")}
+          style={{
+            backgroundColor: COLORS.cornflowerBlue,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 20,
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "bold" }}>Send</Text>
+        </Pressable>
       </View>
-    </ScrollView>
+
+      {showEmojiSelector && (
+        <EmojiSelector
+          onEmojiSelected={(emoji) => {
+            setMsg((prev) => prev + emoji);
+          }}
+          style={{ height: 250 }}
+        />
+      )}
+    </KeyboardAvoidingView>
   );
 };
 
 export default ChatScreen;
-
-const styles = StyleSheet.create({
-  sended: {
-    alignSelf: "flex-end",
-    backgroundColor: "gray",
-    marginVertical: 3,
-    padding: 5,
-  },
-  received: {
-    alignSelf: "flex-start",
-    backgroundColor: "white",
-    marginVertical: 3,
-    padding: 5,
-  },
-
-  textSended: {
-    color: "white",
-  },
-  textReceived: {},
-});

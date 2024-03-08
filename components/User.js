@@ -8,7 +8,7 @@ const User = ({ item, navigation }) => {
   return (
     <TouchableOpacity
       onPress={() =>
-        navigation.navigate("ChatScreen", { currentChatId: item._id })
+        navigation.navigate("ChatScreen", { currentChat: item })
       }
       style={{ flexDirection: "row", alignItems: "center", marginVertical: 10 }}
     >
