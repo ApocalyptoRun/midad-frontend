@@ -4,7 +4,6 @@ import UserDetails from "../screens/UserDetails";
 import { AuthContext } from "../context/AuthContext";
 import { TabsNav } from "./TabsNav";
 import HomeScreen from "../screens/HomeScreen";
-import FriendsScreen from "../screens/FriendsScreen";
 import ChatScreen from "../screens/ChatScreen";
 import ChatMessagesScreen from "../screens/ChatMessagesScreen";
 
@@ -22,8 +21,8 @@ export const AppStack = () => {
       {/* <Stack.Screen name='TabsNav'  component={TabsNav} options={{headerShown: false}}/> */}
       <Stack.Screen name="HomeScreen" component={HomeScreen} />
       <Stack.Screen name="ChatScreen" component={ChatScreen}/>
-      <Stack.Screen name="FriendsScreen" component={FriendsScreen}/>
       <Stack.Screen name="ChatMessagesScreen" component={ChatMessagesScreen}/>
+
     </Stack.Navigator>
   );
 };

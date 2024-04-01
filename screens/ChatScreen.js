@@ -1,5 +1,6 @@
 import {
   Button,
+  FlatList,
   Image,
   KeyboardAvoidingView,
   Pressable,
@@ -7,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import React, {
@@ -30,6 +32,10 @@ import EmojiSelector from "react-native-emoji-selector";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import images from "../constants/images";
+import { Audio } from "expo-av";
+import SoundPlayer from "../components/SoundPlayer";
+import { Colors } from "react-native/Libraries/NewAppScreen";
+import { Divider, IconButton } from "react-native-paper";
 
 const ChatScreen = () => {
   const route = useRoute();
@@ -43,6 +49,10 @@ const ChatScreen = () => {
   const [arrivalMessage, setArrivalMessage] = useState("");
   const socket = useRef("");
   const [showEmojiSelector, setShowEmojiSelector] = useState(false);
+  const [audio, setAudio] = useState();
+  const [audioUri, setAudioUri] = useState("");
+
+  const [recording, setRecording] = useState(null);
 
   useEffect(() => {
     if (currentChatId) {
@@ -116,21 +126,28 @@ const ChatScreen = () => {
     });
   }, []);
 
-  const handleSend = async (messageType, imageUri) => {
+  const handleSend = async (messageType, content) => {
     try {
       const formData = new FormData();
       formData.append("recepientId", currentChatId);
 
       if (messageType === "image") {
         formData.append("messageType", "image");
-        formData.append("imageFile", {
-          uri: imageUri,
+        formData.append("file", {
+          uri: content,
           name: "image.jpg",
           type: "image/jpeg",
         });
-      } else {
+      } else if (messageType === "text") {
         formData.append("messageType", "text");
         formData.append("messageText", msg);
+      } else if (messageType === "audio") {
+        formData.append("messageType", "audio");
+        formData.append("file", {
+          uri: content,
+          name: "audio.m4a",
+          type: "audio/m4a",
+        });
       }
 
       console.log(formData);
@@ -140,6 +157,7 @@ const ChatScreen = () => {
         body: formData,
         headers: {
           Authorization: `Bearer ${userToken}`,
+          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -187,7 +205,7 @@ const ChatScreen = () => {
     return new Date(time).toLocaleString("en-US", options);
   };
 
-  const pickImage = async () => {
+  const pickImageAndSend = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
@@ -199,6 +217,62 @@ const ChatScreen = () => {
 
     if (!result.canceled) {
       handleSend("image", result.assets[0].uri);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) {
+        console.log("Permissions denied for audio recording.");
+        return;
+      }
+
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(
+        Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+      );
+      await recording.startAsync();
+      setAudio(recording);
+      setRecording(recording);
+    } catch (error) {
+      console.log(`Error starting recording ${error}`);
+    }
+  };
+
+  const stopRecordingAndSend = async () => {
+    if (recording) {
+      try {
+        setAudio(undefined);
+        setRecording(null);
+        await audio.stopAndUnloadAsync();
+        const uri = audio.getURI();
+        console.log(uri);
+        setAudioUri(uri);
+        handleSend("audio", uri);
+      } catch (error) {
+        console.log(`Error stopping recording ${error}`);
+      }
+    }
+  };
+
+  const playAudio = async () => {
+    try {
+      const soundObject = new Audio.Sound();
+      await soundObject.loadAsync({ uri: audioUri });
+      await soundObject.playAsync();
+    } catch (error) {
+      console.log("Error playing audio:", error);
+    }
+  };
+
+  const handlePressIn = async () => {
+    await startRecording();
+  };
+
+  const handlePressOut = async () => {
+    if (recording) {
+      await stopRecordingAndSend();
     }
   };
 
@@ -319,6 +393,10 @@ const ChatScreen = () => {
               </Pressable>
             );
           }
+
+          if (item?.messageType === "audio") {
+            return <SoundPlayer key={index} item={item} />;
+          }
         })}
       </ScrollView>
 
@@ -363,12 +441,28 @@ const ChatScreen = () => {
             marginHorizontal: 8,
           }}
         >
-          <Entypo onPress={pickImage} name="camera" size={24} color="gray" />
+          <Entypo
+            onPress={pickImageAndSend}
+            name="camera"
+            size={24}
+            color="gray"
+          />
 
-          <Feather name="mic" size={24} color="gray" />
+          <TouchableOpacity
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+          >
+            <View style={{ transform: [{ scale: audio ? 2 : 1 }] }}>
+              <Feather
+                name={audio ? "stop-circle" : "mic"}
+                size={24}
+                color="gray"
+              />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        <Pressable
+        <TouchableOpacity
           onPress={() => handleSend("text")}
           style={{
             backgroundColor: COLORS.cornflowerBlue,
@@ -378,7 +472,7 @@ const ChatScreen = () => {
           }}
         >
           <Text style={{ color: "white", fontWeight: "bold" }}>Send</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       {showEmojiSelector && (
@@ -390,6 +484,15 @@ const ChatScreen = () => {
         />
       )}
     </KeyboardAvoidingView>
+
+    /*   <View style={{ alignItems: "center" }}>
+      <Button
+        title={audio ? "Stop Recording" : "Start Recording"}
+        onPress={audio ? stopRecordingAndSend : startRecording}
+      />
+
+      <Button title="play" onPress={playAudio} />
+    </View> */
   );
 };
 
