@@ -5,6 +5,7 @@ import { BASE_URL, createConfig } from "../constants/config";
 import axios from "axios";
 
 const User = ({ item, navigation }) => {
+  console.log(item)
   return (
     <TouchableOpacity
       onPress={() =>
@@ -21,6 +22,7 @@ const User = ({ item, navigation }) => {
             resizeMode: "cover",
           }}
           source={{ uri: item.imageUrl }}
+          
         />
       </View>
 

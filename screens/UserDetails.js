@@ -16,41 +16,52 @@ import { BASE_URL } from "../constants/config.js";
 import { AuthContext } from "../context/AuthContext.js";
 
 const UserDetails = ({ navigation }) => {
-  const [firstName, setFirstName] = useState("ibrahima");
-  const [lastName, setLastName] = useState("dieng");
-  const [email, setEmail] = useState("dieng@gmail.com");
+  const [firstName, setFirstName] = useState("");
+  // const [lastName, setLastName] = useState("dieng");
+  // const [email, setEmail] = useState("dieng@gmail.com");
   const [image, setImage] = useState("");
   const { userToken, isFirstAuth, setIsFirstAuth } = useContext(AuthContext);
 
-  const saveDetails = () => {
-    const putData = {
-      firstName: firstName,
-      lastName: lastName,
-      email: email,
-      imageUrl: image,
-    };
-
-    const config = {
-      headers: {
-        Authorization: `Bearer ${userToken}`,
-        "Content-Type": "application/json",
-      },
-    };
-
-    console.log(putData);
-    //console.log(userToken);
-
-    axios
-      .put(`${BASE_URL}/user/update`, putData, config)
-      .then((response) => {
-        console.log(response.data);
-
-        //navigation.navigate('HomeScreen');
-        setIsFirstAuth(!isFirstAuth);
-      })
-      .catch((error) => {
-        console.log(error);
+  const saveDetails = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("firstName", firstName);
+      formData.append("file", {
+        uri: image,
+        name: "image.jpg",
+        type: "image/jpeg",
       });
+
+      console.log(image);
+      console.log(formData);
+
+      const response = await fetch(`${BASE_URL}/user/update`, {
+        method: "PUT",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${userToken}`,
+        },
+      });
+
+      const contentType = response.headers.get("Content-Type");
+      let responseData;
+
+      if (contentType && contentType.includes("application/json")) {
+        responseData = await response.json();
+        console.log(responseData);
+      } else {
+        responseData = await response.text();
+        console.log(responseData);
+      }
+
+      if (response.ok) {
+        setIsFirstAuth(!isFirstAuth);
+      } else {
+        console.log(`Error: ${responseData}`);
+      }
+    } catch (error) {
+      console.log(`Error while updating user details ${error}`);
+    }
   };
 
   const pickImage = async () => {
@@ -95,19 +106,20 @@ const UserDetails = ({ navigation }) => {
           value={firstName}
         />
 
+        {/* 
         <TextInput
           label="lastname"
           mode="outlined"
           onChangeText={(text) => setLastName(text)}
           value={lastName}
-        />
+        /> */}
 
-        <TextInput
+        {/* <TextInput
           label="email"
           mode="outlined"
           onChangeText={(text) => setEmail(text)}
           value={email}
-        />
+        /> */}
 
         <Button title="Save" onPress={saveDetails} style={{ marginTop: 24 }} />
       </View>

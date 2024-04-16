@@ -14,9 +14,9 @@ export const AppStack = () => {
 
   return (
     <Stack.Navigator>
-      {isFirstAuth && !userToken && (
-           <Stack.Screen name='UserDetails' component={UserDetails} options={{headerShown: false}}/>
-         )}
+      {isFirstAuth &&(
+      <Stack.Screen name='UserDetails' component={UserDetails} options={{headerShown: false}}/>
+      )}
 
       {/* <Stack.Screen name='TabsNav'  component={TabsNav} options={{headerShown: false}}/> */}
       <Stack.Screen name="HomeScreen" component={HomeScreen} />

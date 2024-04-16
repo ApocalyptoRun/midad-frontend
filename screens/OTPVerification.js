@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { Component, useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS, FONTS, SIZES } from "../constants/themes";
 import { StatusBar } from "expo-status-bar";
@@ -17,13 +17,42 @@ import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../constants/config";
 import { ALERT_TYPE, Dialog } from "react-native-alert-notification";
+import { Permissions } from 'expo';
+
 
 const OTPVerification = ({ route, navigation }) => {
-  const { data } = route.params;
-  const [otp, setOTP] = useState("");
-  //const [userData, setUserData] = useState('');
-  //const [token, setToken] = useState('');
+  const [otp, setOtp] = useState(undefined);
   const { login } = useContext(AuthContext);
+
+  useEffect(() => {
+    const requestSMSPermission = async () => {
+      const { status }  = await Permissions.askAsync(Permissions.SMS);
+      if (status !== "granted") {
+        alert("SMS permission required to auto-fill OTP.");
+      }
+    };
+
+    requestSMSPermission();
+
+    const startSMSListener = async () => {
+      const subscription = SMS.addListener((event) => {
+        const otpRegex = /(\d{4})/;
+        const match = event.body.match(otpRegex);
+        if (match) {
+          console.log(match)
+          console.log(match[1])
+          setOtp(match[1]);
+        }
+      });
+
+      return () => {
+        subscription.remove();
+      };
+    };
+
+    startSMSListener();
+    if(otp !== undefined) sendOTP();
+  }, []);
 
   const sendOTP = () => {
     const postData = {
@@ -34,9 +63,7 @@ const OTPVerification = ({ route, navigation }) => {
       .post(`${BASE_URL}/auth/verifyOTP`, postData)
       .then((response) => {
         console.log(response.data);
-        //setUserData(response.data);
 
-        //signIn(response.data.phoneNumber);
         login();
       })
       .catch((error) => {
@@ -49,26 +76,7 @@ const OTPVerification = ({ route, navigation }) => {
       });
   };
 
-  const resendCode = () => {
-    const postData = {
-      phoneNumber: data,
-    };
-
-    //console.log(postData);
-
-    axios
-      .post("http://172.23.208.1:8087/auth/sendOTP", postData)
-      .then((response) => {
-        console.log(response.data);
-      })
-      .catch((error) => {
-        if (error.response && error.response.status === 400) {
-          console.log(error.response.data);
-        } else {
-          console.log(error);
-        }
-      });
-  };
+  const resendCode = () => {};
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.white }}>
@@ -107,8 +115,8 @@ const OTPVerification = ({ route, navigation }) => {
             numberOfDigits={4}
             focusColor="#4E73DE"
             focusStickBlinkingDuration={400}
-            onTextChange={(text) => setOTP(text)}
-            onFilled={(text) => setOTP(text)}
+            onTextChange={(text) => setOtp(text)}
+            onFilled={(text) => setOtp(text)}
             theme={{
               pinCodeContainerStyle: {
                 backgroundColor: COLORS.white,

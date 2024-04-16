@@ -59,3 +59,65 @@ if (isPlaying) {
               //setDurationMillis(newSound.durationMillis);
               setSound(newSound);
             }); */
+
+
+//********************userDetails screen***************************** */
+const saveDetails = async () => {
+  try {
+    // const putData = {
+    //   firstName: firstName,
+    //   imageUrl: image,
+    // };
+    const formData = new FormData();
+    formData.append("firstName", firstName);
+    formData.append("file", {
+      uri: image,
+      name: "image.jpg",
+      type: "image/jpeg",
+    });
+
+    // const config = {
+    //   headers: {
+    //     Authorization: `Bearer ${userToken}`,
+    //     "Content-Type": "application/json",
+    //   },
+    // };
+
+    // console.log(putData);
+    //console.log(userToken);
+
+    // axios
+    //   .put(`${BASE_URL}/user/update`, putData, config)
+    //   .then((response) => {
+    //     console.log(response.data);
+
+    //     //navigation.navigate('HomeScreen');
+    //     setIsFirstAuth(!isFirstAuth);
+    //   })
+    //   .catch((error) => {
+    //     console.log(error);
+    //   });
+
+    console.log(formData)
+
+    const response = await fetch(`${BASE_URL}/user/update`, {
+      method: "POST",
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (response) {
+      console.log(response.headers.get('Content-Type'));
+
+      const responseData = await response.text();
+      console.log(responseData);
+
+      setIsFirstAuth(!isFirstAuth);
+    }
+  } catch (error) {
+    console.log(`Error while updating user details ${error}`);
+  }
+};
