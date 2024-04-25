@@ -48,7 +48,6 @@ const HomeScreen = () => {
           (contact) => contact.phoneNumbers[0].number
         ),
       };
-      console.log(postData.phoneContacts)
       const config = createConfig(userToken);
       try {
         const response = await axios.post(
@@ -57,7 +56,6 @@ const HomeScreen = () => {
           config
         );
         if (response.status === 200) {
-         
           setMatchedContacts(response.data);
         }
       } catch (error) {

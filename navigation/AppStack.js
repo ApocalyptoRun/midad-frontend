@@ -6,6 +6,7 @@ import { TabsNav } from "./TabsNav";
 import HomeScreen from "../screens/HomeScreen";
 import ChatScreen from "../screens/ChatScreen";
 import ChatMessagesScreen from "../screens/ChatMessagesScreen";
+import VideoCallScreen from "../screens/VideoCallScreen";
 
 const Stack = createStackNavigator();
 
@@ -15,13 +16,14 @@ export const AppStack = () => {
   return (
     <Stack.Navigator>
       {isFirstAuth &&(
-      <Stack.Screen name='UserDetails' component={UserDetails} options={{headerShown: false}}/>
+        <Stack.Screen name='UserDetails' component={UserDetails} options={{headerShown: false}}/>
       )}
 
-      {/* <Stack.Screen name='TabsNav'  component={TabsNav} options={{headerShown: false}}/> */}
+      {/* <Stack.Screen name='TabsNav'  component={TabsNav} options={{headerShown: false}}/>  */}
       <Stack.Screen name="HomeScreen" component={HomeScreen} />
       <Stack.Screen name="ChatScreen" component={ChatScreen}/>
       <Stack.Screen name="ChatMessagesScreen" component={ChatMessagesScreen}/>
+      <Stack.Screen name="VideoCall" component={VideoCallScreen}/>
 
     </Stack.Navigator>
   );

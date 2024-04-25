@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/midad_logo_adaptive_fore.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff",
+      "backgroundColor": "#ffffff"
     },
     "plugins": [
       [
@@ -25,6 +25,12 @@
             "usesCleartextTraffic": true
           }
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "isAccessMediaLocationEnabled": true
+        }
       ]
     ],
     "assetBundlePatterns": [
@@ -39,7 +45,9 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
       ],
       "package": "com.ibrahimadieng.frontend"
       

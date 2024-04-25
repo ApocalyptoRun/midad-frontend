@@ -17,42 +17,11 @@ import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../constants/config";
 import { ALERT_TYPE, Dialog } from "react-native-alert-notification";
-import { Permissions } from 'expo';
-
+import { Permissions } from "expo";
 
 const OTPVerification = ({ route, navigation }) => {
   const [otp, setOtp] = useState(undefined);
   const { login } = useContext(AuthContext);
-
-  useEffect(() => {
-    const requestSMSPermission = async () => {
-      const { status }  = await Permissions.askAsync(Permissions.SMS);
-      if (status !== "granted") {
-        alert("SMS permission required to auto-fill OTP.");
-      }
-    };
-
-    requestSMSPermission();
-
-    const startSMSListener = async () => {
-      const subscription = SMS.addListener((event) => {
-        const otpRegex = /(\d{4})/;
-        const match = event.body.match(otpRegex);
-        if (match) {
-          console.log(match)
-          console.log(match[1])
-          setOtp(match[1]);
-        }
-      });
-
-      return () => {
-        subscription.remove();
-      };
-    };
-
-    startSMSListener();
-    if(otp !== undefined) sendOTP();
-  }, []);
 
   const sendOTP = () => {
     const postData = {

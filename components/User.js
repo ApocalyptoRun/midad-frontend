@@ -21,7 +21,7 @@ const User = ({ item, navigation }) => {
             borderRadius: 25,
             resizeMode: "cover",
           }}
-          source={{ uri: item.imageUrl }}
+          source={{ uri: item.profilePhoto }}
           
         />
       </View>

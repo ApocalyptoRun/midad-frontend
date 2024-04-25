@@ -1,8 +1,10 @@
 import {
+  AppState,
   Button,
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,73 +24,48 @@ import { BASE_URL, createConfig } from "../constants/config";
 import { AuthContext } from "../context/AuthContext";
 import axios from "axios";
 import { io } from "socket.io-client";
-import { set } from "react-hook-form";
-import { SIZES } from "../constants/themes";
 import { Entypo } from "@expo/vector-icons";
 import { Ionicons } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import { COLORS } from "../constants/themes";
 import EmojiSelector from "react-native-emoji-selector";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
-import images from "../constants/images";
 import { Audio } from "expo-av";
 import SoundPlayer from "../components/SoundPlayer";
-import { Colors } from "react-native/Libraries/NewAppScreen";
-import { Divider, IconButton } from "react-native-paper";
+import * as Notifications from "expo-notifications";
+import { Camera, CameraType } from "expo-camera";
+
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
+import { shareAsync } from "expo-sharing";
 
 const ChatScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { currentChat } = route.params;
   const currentChatId = currentChat._id;
-  const { userToken, userId } = useContext(AuthContext);
+  const { userToken, userId, setSocket } = useContext(AuthContext);
   const [messages, setMessages] = useState([]);
   const [selectedImage, setSelectedImage] = useState("");
   const [msg, setMsg] = useState("");
   const [arrivalMessage, setArrivalMessage] = useState("");
+  const config = createConfig(userToken);
   const socket = useRef("");
   const [showEmojiSelector, setShowEmojiSelector] = useState(false);
   const [audio, setAudio] = useState();
   const [audioUri, setAudioUri] = useState("");
-
   const [recording, setRecording] = useState(null);
+  const [appState, setAppState] = useState(AppState.currentState);
+  const [filePath, setFilePath] = useState("");
+  const [type, setType] = useState(CameraType.back);
+  const [permission, requestPermission] = Camera.useCameraPermissions();
 
   useEffect(() => {
-    if (currentChatId) {
-      try {
-        config = createConfig(userToken);
-
-        const fecthMessages = async () => {
-          const response = await axios.post(
-            `${BASE_URL}/message/messages`,
-            { recepientId: currentChatId },
-            config
-          );
-          if (response) setMessages(response.data);
-        };
-
-        fecthMessages();
-      } catch (error) {
-        console.log(`Error fecthing message ${error}`);
-      }
-    }
+    fecthMessages();
+    setupSocket();
   }, [currentChatId]);
-
-  useEffect(() => {
-    if (userId) {
-      socket.current = io(BASE_URL);
-      socket.current.emit("add-user", userId);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (socket.current) {
-      socket.current.on("msg-receive", (data) => {
-        setArrivalMessage(data);
-      });
-    }
-  }, []);
 
   useEffect(() => {
     arrivalMessage && setMessages((prev) => [...prev, arrivalMessage]);
@@ -115,7 +92,7 @@ const ChatScreen = () => {
                 borderRadius: 50,
                 resizeMode: "cover",
               }}
-              source={{ uri: currentChat?.imageUrl }}
+              source={{ uri: currentChat?.profilePhoto }}
             />
             <Text style={{ marginLeft: 5, fontSize: 15, fontWeight: "bold" }}>
               {currentChat?.firstName}
@@ -123,20 +100,83 @@ const ChatScreen = () => {
           </View>
         </View>
       ),
+      headerRight: () => (
+        <View style={{ marginRight: 16 }}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("VideoCall", {
+                from: userId,
+                to: currentChatId,
+              })
+            }
+          >
+            <Feather name="video" size={24} color="black" />
+          </TouchableOpacity>
+        </View>
+      ),
     });
   }, []);
 
-  const handleSend = async (messageType, content) => {
+  const fecthMessages = async () => {
+    if (currentChatId) {
+      try {
+        const response = await axios.post(
+          `${BASE_URL}/message/messages`,
+          { recepientId: currentChatId },
+          config
+        );
+        if (response) setMessages(response.data);
+      } catch (error) {
+        console.log(`Error fecthing message ${error}`);
+      }
+    }
+  };
+
+  const setupSocket = () => {
+    if (userId) {
+      socket.current = io(BASE_URL);
+      setSocket(socket.current);
+      socket.current.emit("add-user", userId);
+
+      socket.current.on("msg-receive", (data) => {
+        console.log(appState);
+        setArrivalMessage(data);
+      });
+    }
+  };
+
+  const displayLocalNotification = async (message) => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "New Message",
+          body: message,
+        },
+        trigger: null,
+      });
+    } catch (error) {
+      console.log("Error displaying notification:", error);
+    }
+  };
+
+  const handleSend = async (messageType, content, documentName) => {
     try {
       const formData = new FormData();
       formData.append("recepientId", currentChatId);
+
+      let name, type;
+      if (messageType !== "text") {
+        name = content.split("/").pop();
+        type = content.split(".").pop();
+        if (documentName) name = documentName;
+      }
 
       if (messageType === "image") {
         formData.append("messageType", "image");
         formData.append("file", {
           uri: content,
-          name: "image.jpg",
-          type: "image/jpeg",
+          name: name,
+          type: `image/${type}`,
         });
       } else if (messageType === "text") {
         formData.append("messageType", "text");
@@ -148,9 +188,14 @@ const ChatScreen = () => {
           name: "audio.m4a",
           type: "audio/m4a",
         });
+      } else if (messageType === "document") {
+        formData.append("messageType", "document");
+        formData.append("file", {
+          uri: content,
+          name: name,
+          type: `application/${type}`,
+        });
       }
-
-      console.log(formData);
 
       const response = await fetch(`${BASE_URL}/message/addMessage`, {
         method: "POST",
@@ -174,23 +219,6 @@ const ChatScreen = () => {
         setMsg("");
         setSelectedImage("");
       }
-
-      /*       axios
-        .post(`${BASE_URL}/message/addMessage`, postData, config)
-        .then((response) => {
-          console.log(response.data);
-
-          socket.current.emit("send-msg", response.data);
-
-          const msgs = [...messages];
-          msgs.push(response.data);
-          setMessages(msgs);
-
-          setMsg("");
-        })
-        .catch((err) => {
-          console.log(`Error adding message ${err}`);
-        }); */
     } catch (error) {
       console.log(`Error in sending the message ${error}`);
     }
@@ -276,68 +304,129 @@ const ChatScreen = () => {
     }
   };
 
+  const pickDocumentAndSend = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled) {
+        await handleSend(
+          "document",
+          result.assets[0].uri,
+          result.assets[0].name
+        );
+      }
+    } catch (error) {
+      console.error("Error picking document:", error);
+      return null;
+    }
+  };
+
+  const handleDownloadFile = async (filePath) => {
+    setFilePath(filePath);
+    await downloadFile();
+  };
+
+  const downloadFile = async () => {
+    const downloadFromUrl = async () => {
+      const filename = "test.pdf";
+      const result = await FileSystem.downloadAsync(
+        filePath,
+        FileSystem.documentDirectory + filename
+      );
+      console.log(result);
+
+      save(result.uri, filename, result.headers["Content-Type"]);
+    };
+
+    const save = async (uri, filename, mimetype) => {
+      if (Platform.OS === "android") {
+        const permissions =
+          await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (permissions.granted) {
+          const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          await FileSystem.StorageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            filename,
+            mimetype
+          )
+            .then(async (uri) => {
+              await FileSystem.writeAsStringAsync(uri, base64, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+            })
+            .catch((e) => console.log(e));
+        } else {
+          shareAsync(uri);
+        }
+      } else {
+        shareAsync(uri);
+      }
+    };
+
+    downloadFromUrl();
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "white" }}>
       <ScrollView>
         {messages.map((item, index) => {
+          const isCurrentUser = item?.senderId?._id === userId;
+
+          const messageStyle = isCurrentUser
+            ? {
+                alignSelf: "flex-end",
+                backgroundColor: COLORS.cornflowerBlue,
+              }
+            : {
+                alignSelf: "flex-start",
+                backgroundColor: COLORS.gray4,
+              };
+
+          const textStyle = isCurrentUser
+            ? {
+                fontSize: 13,
+                color: "white",
+                textAlign: "left",
+              }
+            : {
+                fontSize: 13,
+                textAlign: "left",
+              };
+
+          const timeStyle = isCurrentUser
+            ? {
+                textAlign: "right",
+                fontSize: 9,
+                color: COLORS.gray6,
+                marginTop: 5,
+              }
+            : {
+                textAlign: "left",
+                fontSize: 9,
+                marginTop: 5,
+              };
+
           if (item?.messageType === "text") {
             return (
               <Pressable
                 key={index}
                 style={[
-                  item?.senderId?._id === userId
-                    ? {
-                        alignSelf: "flex-end",
-                        backgroundColor: COLORS.cornflowerBlue,
-                        padding: 8,
-                        margin: 10,
-                        maxWidth: "60%",
-                        borderRadius: 7,
-                      }
-                    : {
-                        alignSelf: "flex-start",
-                        backgroundColor: COLORS.gray4,
-                        padding: 8,
-                        margin: 10,
-                        maxWidth: "60%",
-                        borderRadius: 7,
-                      },
+                  messageStyle,
+                  {
+                    padding: 8,
+                    margin: 10,
+                    maxWidth: "60%",
+                    borderRadius: 7,
+                  },
                 ]}
               >
-                <Text
-                  style={[
-                    item?.senderId?._id === userId
-                      ? {
-                          fontSize: 13,
-                          color: "white",
-                          textAlign: "left",
-                        }
-                      : {
-                          fontSize: 13,
-                          textAlign: "left",
-                        },
-                  ]}
-                >
-                  {item?.message}
-                </Text>
-                <Text
-                  style={[
-                    item?.senderId?._id === userId
-                      ? {
-                          textAlign: "right",
-                          fontSize: 9,
-                          color: COLORS.gray6,
-                          marginTop: 5,
-                        }
-                      : {
-                          textAlign: "left",
-                          fontSize: 9,
-                          marginTop: 5,
-                        },
-                  ]}
-                >
-                  {formatTime(item.timeStamp)}
-                </Text>
+                <Text style={textStyle}> {item?.message} </Text>
+                <Text style={timeStyle}> {formatTime(item.timeStamp)} </Text>
               </Pressable>
             );
           }
@@ -346,24 +435,15 @@ const ChatScreen = () => {
             return (
               <Pressable
                 key={index}
+                onPress={() => handleDownloadFile(item.imageUrl)}
                 style={[
-                  item?.senderId?._id === userId
-                    ? {
-                        alignSelf: "flex-end",
-                        backgroundColor: COLORS.cornflowerBlue,
-                        padding: 8,
-                        margin: 10,
-                        maxWidth: "60%",
-                        borderRadius: 7,
-                      }
-                    : {
-                        alignSelf: "flex-start",
-                        backgroundColor: COLORS.gray4,
-                        padding: 8,
-                        margin: 10,
-                        maxWidth: "60%",
-                        borderRadius: 7,
-                      },
+                  messageStyle,
+                  {
+                    padding: 8,
+                    margin: 10,
+                    maxWidth: "60%",
+                    borderRadius: 7,
+                  },
                 ]}
               >
                 <View>
@@ -371,31 +451,39 @@ const ChatScreen = () => {
                     source={{ uri: item.imageUrl }}
                     style={{ width: 200, height: 200, borderRadius: 7 }}
                   />
-                  <Text
-                    style={[
-                      item?.senderId?._id === userId
-                        ? {
-                            textAlign: "right",
-                            fontSize: 9,
-                            color: COLORS.gray6,
-                            marginTop: 5,
-                          }
-                        : {
-                            textAlign: "left",
-                            fontSize: 9,
-                            marginTop: 5,
-                          },
-                    ]}
-                  >
-                    {formatTime(item.timeStamp)}
-                  </Text>
+                  <Text style={timeStyle}> {formatTime(item.timeStamp)} </Text>
                 </View>
               </Pressable>
             );
           }
 
-          if (item?.messageType === "audio") {
-            return <SoundPlayer key={index} item={item} />;
+          if (item?.messageType === "document") {
+            let fileName = item.imageUrl.split("/").pop();
+            fileName = fileName.split("-").pop();
+            return (
+              <Pressable
+                key={index}
+                onPress={() => handleDownloadFile(item.imageUrl)}
+                style={[
+                  messageStyle,
+                  {
+                    padding: 8,
+                    margin: 10,
+                    maxWidth: "60%",
+                    borderRadius: 7,
+                  },
+                ]}
+              >
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <FontAwesome name="file" size={24} color="white" />
+                  <Text style={{color:COLORS.white}} numberOfLines={1} ellipsizeMode="tail">
+                    {fileName}
+                  </Text>
+                </View>
+              </Pressable>
+            );
           }
         })}
       </ScrollView>
@@ -444,6 +532,13 @@ const ChatScreen = () => {
           <Entypo
             onPress={pickImageAndSend}
             name="camera"
+            size={24}
+            color="gray"
+          />
+
+          <Ionicons
+            onPress={pickDocumentAndSend}
+            name="document-attach-outline"
             size={24}
             color="gray"
           />
@@ -497,3 +592,12 @@ const ChatScreen = () => {
 };
 
 export default ChatScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

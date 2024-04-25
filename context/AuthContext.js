@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
   const [userId, setUserId] = useState(null);
   const [phoneNumber, setPhoneNumber] = useState("58071373");
   const [callingCode, setCallingCode] = useState("216");
+  const [socket, setSocket] = useState(null)
 
   const login = async () => {
     setIsLoading(true);
@@ -100,7 +101,9 @@ export const AuthProvider = ({ children }) => {
         setIsFirstAuth,
         login,
         logout,
-        userId
+        userId,
+        socket,
+        setSocket
       }}
     >
       {children}

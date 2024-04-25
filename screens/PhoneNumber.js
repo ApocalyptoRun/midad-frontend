@@ -20,13 +20,9 @@ import { AuthContext } from "../context/AuthContext";
 import { BASE_URL } from "../constants/config";
 
 const PhoneNumber = ({ navigation }) => {
-  const [selectedCountry, setSelectedCountry] = useState({
-    cca2: "TN",
-    callingCode: "216",
-  });
+  const [selectedCountry, setSelectedCountry] = useState({cca2: "TN", callingCode: "216"});
   const [otp, setOTP] = useState("");
-  const { phoneNumber, setPhoneNumber, setIsFirstAuth, setCallingCode } =
-    useContext(AuthContext);
+  const { phoneNumber, setPhoneNumber, setIsFirstAuth, setCallingCode } = useContext(AuthContext);
 
   const onSelectCountry = (country) => {
     setSelectedCountry(country);

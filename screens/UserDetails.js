@@ -7,7 +7,6 @@ import {
 } from "react-native";
 import React, { useContext, useState } from "react";
 import { Avatar, TextInput } from "react-native-paper";
-import axios from "axios";
 import { COLORS, SIZES } from "../constants/themes";
 import images from "../constants/images";
 import * as ImagePicker from "expo-image-picker";
@@ -17,8 +16,6 @@ import { AuthContext } from "../context/AuthContext.js";
 
 const UserDetails = ({ navigation }) => {
   const [firstName, setFirstName] = useState("");
-  // const [lastName, setLastName] = useState("dieng");
-  // const [email, setEmail] = useState("dieng@gmail.com");
   const [image, setImage] = useState("");
   const { userToken, isFirstAuth, setIsFirstAuth } = useContext(AuthContext);
 
@@ -32,10 +29,7 @@ const UserDetails = ({ navigation }) => {
         type: "image/jpeg",
       });
 
-      console.log(image);
-      console.log(formData);
-
-      const response = await fetch(`${BASE_URL}/user/update`, {
+      const response = await fetch(`${BASE_URL}/user/updateProfile`, {
         method: "PUT",
         body: formData,
         headers: {
@@ -106,21 +100,6 @@ const UserDetails = ({ navigation }) => {
           value={firstName}
         />
 
-        {/* 
-        <TextInput
-          label="lastname"
-          mode="outlined"
-          onChangeText={(text) => setLastName(text)}
-          value={lastName}
-        /> */}
-
-        {/* <TextInput
-          label="email"
-          mode="outlined"
-          onChangeText={(text) => setEmail(text)}
-          value={email}
-        /> */}
-
         <Button title="Save" onPress={saveDetails} style={{ marginTop: 24 }} />
       </View>
     </SafeAreaView>
@@ -135,7 +114,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: COLORS.white,
   },
-  input: {},
 });
 
 export default UserDetails;
